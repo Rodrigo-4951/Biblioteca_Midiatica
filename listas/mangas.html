@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca Mangas</title>
+    <link rel="stylesheet" href="background.css">
+    <link rel="icon" href="icon.webp">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            gap: 40px;
+            padding: 24px;
+        }
+
+        /* Esquerda: campos e botões */
+        #controles {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 220px;
+        }
+
+        /* Direita: lista */
+        #lista {
+            flex: 1;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #lista li { margin-bottom: 8px; }
+        #lista label { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- ESQUERDA -->
+    <form id="controles">
+        <input type="text" id="nome" placeholder="Nome" required>
+        <input type="date" id="data" required>
+        <button type="submit">Adicionar</button>
+        <button type="button" id="remover">Remover selecionado</button>
+        <button type="button" id="salvarArquivo">Salvar em arquivo JSON</button>
+        <button type="button" id="carregarArquivo">Carregar arquivo JSON</button>
+        <input type="file" id="arquivo" accept=".json,application/json" hidden>
+    </form>
+
+    <!-- DIREITA -->
+    <ul id="lista"></ul>
+
+    <script>
+        const form = document.getElementById('controles');
+        const lista = document.getElementById('lista');
+        const botaoRemover = document.getElementById('remover');
+        const CHAVE = 'Mangas';
+
+        // Lê os itens guardados no navegador (ou começa vazia)
+        function carregar() {
+            try {
+                return JSON.parse(localStorage.getItem(CHAVE)) || [];
+            } catch (erro) {
+                return [];
+            }
+        }
+
+        // Guarda a lista atual no navegador
+        function salvar() {
+            try {
+                localStorage.setItem(CHAVE, JSON.stringify(itens));
+            } catch (erro) {
+                // se o navegador bloquear o armazenamento, a lista só dura até recarregar
+            }
+        }
+
+        const itens = carregar();
+
+        function desenhar() {
+            lista.innerHTML = '';
+
+            itens.forEach((item, indice) => {
+                const [ano, mes, dia] = item.data.split('-');
+
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'escolhido';
+                radio.value = indice;
+
+                label.append(radio, ` ${item.nome} - ${dia}/${mes}/${ano}`);
+                li.appendChild(label);
+                lista.appendChild(li);
+            });
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            itens.push({
+                nome: document.getElementById('nome').value,
+                data: document.getElementById('data').value
+            });
+            salvar();
+            desenhar();
+            form.reset();
+        });
+
+        botaoRemover.addEventListener('click', () => {
+            const marcado = document.querySelector('input[name="escolhido"]:checked');
+            if (!marcado) return;
+            itens.splice(Number(marcado.value), 1);
+            salvar();
+            desenhar();
+        });
+
+        // ---- Salvar em arquivo .json (baixa o arquivo) ----
+        document.getElementById('salvarArquivo').addEventListener('click', () => {
+            const texto = JSON.stringify(itens, null, 2);
+            const blob = new Blob([texto], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'lista.json';
+            link.click();
+
+            URL.revokeObjectURL(url);
+        });
+
+        // ---- Carregar de um arquivo .json ----
+        const inputArquivo = document.getElementById('arquivo');
+
+        document.getElementById('carregarArquivo').addEventListener('click', () => {
+            inputArquivo.click();
+        });
+
+        inputArquivo.addEventListener('change', () => {
+            const arquivo = inputArquivo.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = () => {
+                try {
+                    const dados = JSON.parse(leitor.result);
+                    const valido = Array.isArray(dados) &&
+                        dados.every(i => typeof i.nome === 'string' && typeof i.data === 'string');
+                    if (!valido) throw new Error('formato inválido');
+
+                    itens.length = 0;          // esvazia a lista atual
+                    itens.push(...dados);      // coloca os itens do arquivo
+                    salvar();
+                    desenhar();
+                } catch (erro) {
+                    alert('Arquivo inválido. Escolha um JSON gerado por esta página.');
+                }
+            };
+            leitor.readAsText(arquivo);
+            inputArquivo.value = '';           // permite escolher o mesmo arquivo de novo
+        });
+
+        // Mostra a lista salva assim que a página abre
+        desenhar();
+    </script>
+</body>
+</html>

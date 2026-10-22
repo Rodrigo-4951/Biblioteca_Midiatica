@@ -1,0 +1,10 @@
+body {
+    background-image: url('folha.jpg');
+    background-size: 300px;       /* tamanho de cada "quadrado" de tijolo */
+    background-repeat: repeat;    /* repete até cobrir a tela */
+    margin: 0;
+    min-height: 30vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
